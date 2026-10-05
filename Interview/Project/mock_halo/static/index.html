@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock Halo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --nav: #0e2d55; --nav-icon: #c9d6e8; --cyan: #1eb2ee; --cyan-dark: #0d98d3;
+    --bg: #eef2f8; --strip: #dde6f1; --card: #ffffff; --text: #1d2433; --muted: #6b778a;
+    --line: #e6eaf0; --link: #1f6fb8; --row-hover: #f6f9fd;
+    --sla-red: #ff2d14; --sla-orange: #ff9800; --sla-yellow: #ffc107; --sla-green: #7ccf00; --sla-track: #d5d8dd;
+    --private-bg: #fff8e2; --private-line: #f0c64a; --resolved-bg: #ebf8ef; --resolved-line: #4cb974;
+    --inbound-line: #9aa7b8; --outbound-line: #1eb2ee; --danger: #c62d1f;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Poppins, system-ui, "Segoe UI", sans-serif; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+  a { color: var(--link); text-decoration: none; }
+
+  /* --- shell --- */
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: 72px; background: var(--nav); display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 6px; z-index: 5; }
+  .logo { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: var(--nav); display: grid; place-items: center; font-weight: 700; font-size: 17px; margin-bottom: 8px; }
+  .nav-item { width: 72px; height: 50px; display: grid; place-items: center; color: var(--nav-icon); }
+  .nav-item svg { width: 23px; height: 23px; }
+  .nav-item.on { background: var(--cyan); color: #fff; border-radius: 12px 0 0 12px; width: 66px; margin-left: 6px; }
+  .app { margin-left: 72px; min-height: 100%; display: flex; flex-direction: column; }
+  .topbar { background: var(--strip); display: flex; align-items: flex-end; gap: 12px; padding: 6px 16px 0; min-height: 52px; }
+  .crumb-tab { background: var(--bg); border-radius: 12px 12px 0 0; padding: 12px 22px; display: flex; align-items: center; gap: 10px; min-width: 300px; }
+  .crumb-tab a { color: var(--text); }
+  .crumb-tab .sep { color: var(--muted); }
+  .topbar .mocknote { align-self: center; font-size: 11.5px; color: var(--muted); flex: 1; }
+  .icons { align-self: center; display: flex; gap: 8px; padding-bottom: 4px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 0; display: grid; place-items: center; color: var(--text); box-shadow: 0 1px 2px #0001; }
+  .icon-btn svg { width: 17px; height: 17px; }
+  .avatar-me { width: 38px; height: 38px; border-radius: 50%; background: var(--cyan); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+  main { padding: 14px 16px 24px; flex: 1; }
+
+  /* --- list toolbar --- */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .pill-btn { height: 40px; border-radius: 20px; border: 0; background: #fff; padding: 0 16px; box-shadow: 0 1px 2px #0001; display: inline-flex; align-items: center; gap: 6px; }
+  .round { width: 40px; padding: 0; justify-content: center; }
+  .view-select { height: 40px; border: 0; background: transparent; font: inherit; font-size: 15.5px; font-weight: 500; padding: 0 8px; cursor: pointer; }
+  .search { height: 40px; border-radius: 20px; background: #e6ebf2; display: flex; align-items: center; padding: 0 14px; gap: 8px; width: min(360px, 100%); }
+  .search input { border: 0; background: transparent; font: inherit; flex: 1; min-width: 0; outline: none; }
+  .search svg { width: 18px; height: 18px; color: var(--cyan); }
+  .spacer { flex: 1; }
+  .count { color: var(--muted); font-weight: 500; }
+  .primary { background: var(--cyan); color: #fff; font-weight: 500; }
+  .primary:hover { background: var(--cyan-dark); }
+
+  /* --- table --- */
+  .card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px #0000000d; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 1180px; }
+  th { text-align: left; font-weight: 500; padding: 16px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; }
+  th.sorted { box-shadow: inset 0 3px 0 #555; }
+  th .dir { font-size: 10px; color: var(--muted); margin-left: 4px; }
+  td { padding: 0 10px; height: 62px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--row-hover); }
+  td.cb, th.cb { width: 40px; padding-left: 18px; }
+  td.summary { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+  td.summary a { color: var(--link); }
+  .sla { position: relative; width: 160px; height: 24px; background: var(--sla-track); }
+  .field .sla { width: 100%; }
+  .sla > span { position: absolute; inset: 0 auto 0 0; }
+  .sla > b { position: relative; display: block; text-align: center; font-weight: 500; line-height: 24px; font-size: 13.5px; }
+  .sla.breached > b { color: #fff; }
+  .muted { color: var(--muted); }
+  .prio { display: inline-flex; align-items: center; gap: 8px; }
+  .prio i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .status { display: inline-block; min-width: 140px; text-align: center; padding: 6px 12px; border-radius: 4px; font-weight: 500; }
+  .st-new { background: #fdd8a7; } .st-progress { background: #c6d9fb; }
+  .st-waiting { background: #1e9be9; color: #fff; } .st-closed { background: #e4e7ec; color: #4a5465; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+
+  /* --- ticket view --- */
+  .tv-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tv-head h2 { margin: 0; font-size: 18px; font-weight: 600; flex: 1 1 300px; }
+  .tv-head .tid { color: var(--muted); font-weight: 500; margin-right: 6px; }
+  .tv-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tv-actions .pill-btn { height: 36px; box-shadow: none; border: 1px solid var(--line); }
+  .tv-actions .pill-btn.primary { border-color: var(--cyan); }
+  .tv-body { display: grid; grid-template-columns: 300px 1fr; gap: 12px; align-items: start; }
+  @media (max-width: 900px) { .tv-body { grid-template-columns: 1fr; } }
+  .fields { padding: 16px 18px; }
+  .fields h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .field { display: grid; grid-template-columns: 112px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .field:last-child { border-bottom: 0; }
+  .field span { color: var(--muted); }
+  .main-card { min-width: 0; overflow: hidden; }
+  .main-head { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  #paneActions { padding: 16px 18px; }
+  .pill-btn.custom { border-color: var(--cyan); color: var(--cyan-dark); font-weight: 500; }
+  .pill-btn.custom:hover { background: #eaf7fd; }
+  .pill-btn .ext { font-size: 11px; margin-left: 2px; }
+
+  .composer { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; background: #fbfcfe; }
+  .composer .ctitle { font-weight: 600; margin-bottom: 8px; }
+  .composer textarea { width: 100%; min-height: 90px; font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+  .composer .crow { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .composer .crow .spacer { flex: 1; }
+  .composer label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .err { color: var(--danger); font-size: 13px; }
+
+  .action { display: grid; grid-template-columns: 38px 1fr; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+  .action.private { background: var(--private-bg); border-left-color: var(--private-line); }
+  .action.resolved { background: var(--resolved-bg); border-left-color: var(--resolved-line); }
+  .action.inbound { border-left-color: var(--inbound-line); }
+  .action.outbound { border-left-color: var(--outbound-line); }
+  .action.fresh { animation: flash 2.5s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 4px #f5b70b; } to { box-shadow: none; } }
+  .av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 600; color: #fff; background: #8492a6; }
+  .av.bot { background: var(--nav); font-size: 16px; }
+  .ahead { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+  .ahead b { font-weight: 600; }
+  .ahead .when { color: var(--muted); font-size: 12px; }
+  .tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px; background: #eef1f5; color: #4a5465; }
+  .tag.private { background: var(--private-line); color: #4a3700; }
+  .abody { white-space: pre-wrap; word-break: break-word; }
+  .abody.html { white-space: normal; }
+  .abody.html p { margin: 0 0 8px; }
+  .abody.html ul { margin: 0 0 8px; padding-left: 20px; }
+  .abody.html li { margin-bottom: 6px; }
+  .abody.html a { font-weight: 600; text-decoration: underline; }
+
+  dialog { border: 0; border-radius: 14px; padding: 0; width: min(680px, calc(100vw - 32px)); box-shadow: 0 20px 60px #0003; }
+  dialog form { padding: 20px 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  dialog h3 { grid-column: 1 / -1; margin: 0; font-weight: 600; }
+  dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  dialog input, dialog select, dialog textarea { font: inherit; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: #fff; }
+  dialog .full { grid-column: 1 / -1; }
+  dialog .buttons { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+  dialog .pill-btn { box-shadow: none; border: 1px solid var(--line); }
+  dialog .pill-btn.primary { border-color: var(--cyan); }
+</style>
+</head>
+<body>
+<nav class="sidebar" aria-label="Main">
+  <div class="logo" title="Mock Halo">M</div>
+  <a class="nav-item on" href="#" title="Tickets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 0 0 6v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 0 0 0-6V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg></a>
+  <span class="nav-item" title="Dashboards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18M3 10h18M3 15h18M3 20h18"/></svg></span>
+  <span class="nav-item" title="Calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+  <span class="nav-item" title="Users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+  <span class="nav-item" title="Assets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
+  <span class="nav-item" title="Timesheets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+  <span class="nav-item" title="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+  <span class="nav-item" title="Knowledge base"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg></span>
+  <span class="nav-item" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+</nav>
+
+<div class="app">
+  <div class="topbar">
+    <div class="crumb-tab" id="crumbs"></div>
+    <span class="mocknote">Mock Halo · local demo with fictional data, not connected to HaloPSA</span>
+    <div class="icons">
+      <button class="icon-btn" title="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+      <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+      <button class="icon-btn" title="Timers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></button>
+      <div class="avatar-me" title="Signed in">SD</div>
+    </div>
+  </div>
+
+  <main>
+    <!-- Ticket list -->
+    <section id="listView">
+      <div class="toolbar">
+        <select class="view-select" id="viewSelect" aria-label="View">
+          <option value="open">Open Tickets</option>
+          <option value="closed">Closed Tickets</option>
+          <option value="all">All Tickets</option>
+        </select>
+        <div class="search">
+          <input id="search" type="search" placeholder="Search..." aria-label="Search tickets">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </div>
+        <span class="spacer"></span>
+        <span class="count" id="count"></span>
+        <button class="pill-btn round" id="refreshBtn" title="Refresh"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1eb2ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg></button>
+        <button class="pill-btn primary" id="newBtn">+ New</button>
+      </div>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Ticket -->
+    <section id="ticketView" hidden>
+      <div class="card tv-head" id="tvHead"></div>
+      <div class="tv-body">
+        <aside class="card fields" id="tvFields"></aside>
+        <section class="card main-card">
+          <div class="main-head">Actions</div>
+          <div id="paneActions">
+            <div id="composer"></div>
+            <div id="thread"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<dialog id="newDlg">
+  <form id="newForm" method="dialog">
+    <h3>New ticket</h3>
+    <label class="full">Demo preset
+      <select id="preset"></select>
+    </label>
+    <label>Client <select name="client_name" id="client" required></select></label>
+    <label>Site <select name="site_name" id="site"></select></label>
+    <label>Contact <input name="user_name" value="Dana Halvorsen"></label>
+    <label>Channel
+      <select name="channel"><option>Manual - Phone</option><option>Email</option><option>Portal</option><option>Manual</option></select>
+    </label>
+    <label>Type <select name="type" id="type"></select></label>
+    <label>Subtype <select name="subtype" id="subtype"></select></label>
+    <label>Impact <select name="impact" id="impact"></select></label>
+    <label>Urgency <select name="urgency" id="urgency"></select></label>
+    <label class="full">Asset model <input name="asset_model" placeholder="e.g. Panasonic CF-33"></label>
+    <label class="full">Summary <input name="summary" required></label>
+    <label class="full">Details <textarea name="details" rows="6"></textarea></label>
+    <div class="buttons">
+      <button type="button" class="pill-btn" id="cancelNew">Cancel</button>
+      <button type="submit" class="pill-btn primary">Log ticket</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = (id) => String(id).padStart(7, "0");
+const fmt = (iso) => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "–";
+const initials = (name) => (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+
+const PRESETS = [
+  { label: "Truck laptop won't connect to dispatch", client_name: "Riverside Fire Dept", site_name: "Station 4",
+    user_name: "Dana Halvorsen", channel: "Manual - Phone", type: "Hardware", subtype: "MDT", impact: 3, urgency: 1,
+    summary: "truck laptop wont connect to dispatch again",
+    details: "medic 3 truck laptop wont connect to dispatch again. crew is running calls off the radio\n\nSent from my iPhone" },
+  { label: "Priner offline at station", client_name: "Lakeview Fire & Rescue", site_name: "Station 10",
+    user_name: "Owen Brennan", channel: "Email", type: "Hardware", subtype: "Printer", impact: 2, urgency: 2,
+    summary: "priner at stn 10 not working AGAIN",
+    details: "Hi team,\n\nnobody can print to the big copier since the power blip this morning, says offline on every pc\n\nThanks,\nCapt. Owen Brennan\nLakeview Fire & Rescue\n(555) 830-1172" },
+  { label: "Patient reports won't upload", client_name: "Cedar County EMS", site_name: "Station 7",
+    user_name: "Priya Tran", channel: "Portal", type: "Standard Applications", subtype: "Other (Not Listed)", impact: 3, urgency: 1,
+    summary: "cant get reports to upload",
+    details: "charting on the tablet in medic 7 has 4 pcrs sitting there, hospital is asking for them" },
+  { label: "Tones didn't drop", client_name: "Pine Ridge Fire District", site_name: "Station 12",
+    user_name: "Grant Moody", channel: "Manual - Phone", type: "Hardware", subtype: "Speakers", impact: 1, urgency: 1,
+    summary: "no tones in the bay",
+    details: "Alerting didnt go off in the apparatus bay for the last two calls. Lights work, no audio." },
+  { label: "Weird email from 'the chief'", client_name: "Riverside Fire Dept", site_name: "Admin Office",
+    user_name: "Lena Sandoval", channel: "Email", type: "Inquiries", subtype: "General Knowledge", impact: 3, urgency: 2,
+    summary: "is this real??",
+    details: "FW: Urgent request\n\ngot an email from the chief asking me to pick up gift cards for the crew, it came from a gmail address" },
+];
+
+const PRIORITY = { P1: ["Critical", "#e0262b"], P2: ["High", "#ff8a1f"], P3: ["Medium", "#ffd21f"], P4: ["Low", "#5cc531"] };
+const STATUS_CLASS = { "New": "st-new", "In Progress": "st-progress", "Waiting on User": "st-waiting", "Closed": "st-closed" };
+
+const COLUMNS = [
+  { key: "id", label: "ID", sort: (t) => t.id },
+  { key: "client", label: "Client", sort: (t) => t.client_name || "" },
+  { key: "contact", label: "Contact", sort: (t) => t.user_name || "" },
+  { key: "summary", label: "Summary", sort: (t) => t.summary.toLowerCase() },
+  { key: "sla", label: "SLA Time Left", sort: (t) => t.status === "Closed" ? Infinity : Date.parse(t.resolution_target) - Date.now() },
+  { key: "priority", label: "Priority", sort: (t) => t.priority || "" },
+  { key: "status", label: "Status", sort: (t) => t.status },
+  { key: "channel", label: "Channel", sort: (t) => t.channel || "" },
+  { key: "age", label: "Ticket Age", sort: (t) => Date.parse(t.date_reported) },
+];
+
+const state = { view: "open", search: "", tickets: [], total: 0, sortKey: "sla", sortDir: 1,
+                ticketId: null, ticket: null, tab: "actions", knownActionIds: new Set(), meta: null };
+
+// --- small renderers -----------------------------------------------------------------------
+
+function slaCell(t) {
+  if (t.status === "Closed" || !t.resolution_target) return `<span class="muted">–</span>`;
+  const end = Date.parse(t.resolution_target), start = Date.parse(t.date_reported), now = Date.now();
+  const left = end - now;
+  const frac = Math.min(1, Math.max(0, (now - start) / (end - start)));
+  const breached = left < 0;
+  const color = breached ? "var(--sla-red)" : frac < 0.3 ? "var(--sla-green)" : frac < 0.6 ? "var(--sla-yellow)" : "var(--sla-orange)";
+  const mins = Math.floor(Math.abs(left) / 60000);
+  const text = `${breached ? "-" : ""}${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  return `<div class="sla ${breached ? "breached" : ""}"><span style="width:${breached ? 100 : frac * 100}%;background:${color}"></span><b>${text}</b></div>`;
+}
+
+function prioCell(p) {
+  const [label, color] = PRIORITY[p] || [p || "–", "#c0c6cf"];
+  return `<span class="prio"><i style="background:${color}"></i>${esc(label)}</span>`;
+}
+
+function statusPill(s) {
+  return `<span class="status ${STATUS_CLASS[s] || "st-closed"}">${esc(s)}</span>`;
+}
+
+function ageText(t) {
+  const end = t.date_closed ? Date.parse(t.date_closed) : Date.now();
+  return `${((end - Date.parse(t.date_reported)) / 86400000).toFixed(2)} day(s)`;
+}
+
+function setCrumbs(parts) {
+  $("#crumbs").innerHTML = parts.map((p, i) =>
+    (i ? `<span class="sep">›</span>` : "") + (p.href ? `<a href="${p.href}">${esc(p.label)}</a>` : `<span>${esc(p.label)}</span>`)).join("");
+}
+
+// --- list view -----------------------------------------------------------------------------
+
+function renderHead() {
+  $("#thead").innerHTML = `<th class="cb"><input type="checkbox" aria-label="Select all"></th>` + COLUMNS.map((c) =>
+    `<th data-key="${c.key}" class="${state.sortKey === c.key ? "sorted" : ""}">${c.label}${state.sortKey === c.key ? `<span class="dir">${state.sortDir > 0 ? "▲" : "▼"}</span>` : ""}</th>`).join("");
+}
+
+function renderList() {
+  const col = COLUMNS.find((c) => c.key === state.sortKey);
+  const rows = [...state.tickets].sort((a, b) => {
+    const x = col.sort(a), y = col.sort(b);
+    return (x < y ? -1 : x > y ? 1 : 0) * state.sortDir;
+  });
+  renderHead();
+  $("#rows").innerHTML = rows.map((t) => `
+    <tr data-id="${t.id}">
+      <td class="cb"><input type="checkbox" aria-label="Select #${t.id}"></td>
+      <td>${pad(t.id)}</td>
+      <td>${esc(t.client_name)}</td>
+      <td>${esc(t.user_name)}</td>
+      <td class="summary"><a href="#ticket=${t.id}">${esc(t.summary)}</a></td>
+      <td>${slaCell(t)}</td>
+      <td>${prioCell(t.priority)}</td>
+      <td>${statusPill(t.status)}</td>
+      <td>${esc(t.channel || "–")}</td>
+      <td>${ageText(t)}</td>
+    </tr>`).join("") || `<tr><td colspan="${COLUMNS.length + 1}" class="empty">No tickets</td></tr>`;
+  $("#count").textContent = rows.length ? `1-${rows.length} of ${state.total}` : "0 of 0";
+}
+
+async function loadList() {
+  const params = new URLSearchParams({ status: state.view });
+  if (state.search) params.set("search", state.search);
+  const data = await (await fetch("/ui/tickets?" + params)).json();
+  state.tickets = data.tickets;
+  state.total = data.record_count;
+  renderList();
+}
+
+function showList() {
+  state.ticketId = null;
+  $("#ticketView").hidden = true;
+  $("#listView").hidden = false;
+  setCrumbs([{ label: "Tickets", href: "#" }, { label: $("#viewSelect").selectedOptions[0].text }]);
+  loadList();
+}
+
+$("#thead").addEventListener("click", (e) => {
+  const th = e.target.closest("th[data-key]");
+  if (!th) return;
+  if (state.sortKey === th.dataset.key) state.sortDir *= -1;
+  else { state.sortKey = th.dataset.key; state.sortDir = 1; }
+  renderList();
+});
+$("#rows").addEventListener("click", (e) => {
+  if (e.target.matches("input[type=checkbox]")) return;
+  const tr = e.target.closest("tr[data-id]");
+  if (tr) { e.preventDefault(); location.hash = `ticket=${tr.dataset.id}`; }
+});
+$("#viewSelect").addEventListener("change", (e) => {
+  state.view = e.target.value;
+  state.sortKey = state.view === "open" ? "sla" : "id";
+  state.sortDir = state.view === "open" ? 1 : -1;
+  showList();
+});
+let searchTimer;
+$("#search").addEventListener("input", (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.search = e.target.value.trim(); loadList(); }, 250);
+});
+$("#refreshBtn").addEventListener("click", loadList);
+
+// --- ticket view ---------------------------------------------------------------------------
+
+// Notes can carry HTML (note_html). Keep only basic formatting and http(s)/# links.
+const ALLOWED_TAGS = new Set(["A", "B", "STRONG", "I", "EM", "BR", "P", "UL", "OL", "LI", "SPAN", "DIV"]);
+function sanitizeHtml(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const clean = (node) => {
+    for (const el of [...node.children]) {
+      if (!ALLOWED_TAGS.has(el.tagName)) { el.replaceWith(doc.createTextNode(el.textContent)); continue; }
+      for (const attr of [...el.attributes]) {
+        const safeLink = el.tagName === "A" && attr.name === "href" && /^(https?:|#)/i.test(attr.value.trim());
+        if (!safeLink) el.removeAttribute(attr.name);
+      }
+      clean(el);
+    }
+  };
+  clean(doc.body);
+  return doc.body.innerHTML;
+}
+
+function actionHtml(a, fresh) {
+  const kind = a.outcome === "Resolved" ? "resolved"
+    : a.hiddenfromuser ? "private"
+    : /reply|received|logged/i.test(a.outcome) ? "inbound"
+    : /email/i.test(a.outcome) ? "outbound" : "";
+  const bot = /bot/i.test(a.who || "");
+  return `<div class="action ${kind} ${fresh ? "fresh" : ""}">
+    <div class="av ${bot ? "bot" : ""}">${bot ? "🔎" : esc(initials(a.who))}</div>
+    <div>
+      <div class="ahead"><b>${esc(a.who || "System")}</b><span class="tag">${esc(a.outcome)}</span>
+        ${a.hiddenfromuser ? `<span class="tag private">Private</span>` : ""}<span class="when">${fmt(a.datetime)}</span></div>
+      ${a.note_html ? `<div class="abody html">${sanitizeHtml(a.note_html)}</div>` : `<div class="abody">${esc(a.note)}</div>`}
+    </div>
+  </div>`;
+}
+
+function renderTicket(t, { fresh = false } = {}) {
+  const closed = t.status === "Closed";
+  $("#tvHead").innerHTML = `
+    <button class="pill-btn round" data-act="back" title="Back">←</button>
+    <h2><span class="tid">#${pad(t.id)}</span>${esc(t.summary)}</h2>
+    ${statusPill(t.status)}
+    <div class="tv-actions">
+      ${state.meta.custom_buttons.map((b, i) =>
+        `<button class="pill-btn custom" data-custom="${i}" title="Opens in a new window">${esc(b.name)}<span class="ext">↗</span></button>`).join("")}
+      ${closed ? "" : `
+        <button class="pill-btn" data-act="note">Add Note</button>
+        <button class="pill-btn" data-act="email">Email User</button>
+        <button class="pill-btn primary" data-act="close">Close Ticket</button>`}
+    </div>`;
+
+  const fields = [
+    ["Client", t.client_name], ["Site", t.site_name], ["Contact", t.user_name], ["Channel", t.channel],
+    ["Type", t.type], ["Subtype", t.subtype], ["Priority", prioCell(t.priority), true],
+    ["Status", t.status], ["Team", t.team], ["Agent", t.agent], ["Asset", t.asset_model],
+    ["Date Reported", fmt(t.date_reported)], ["Last Action", fmt(t.last_action_date)],
+    ["Resolution Target", fmt(t.resolution_target)], ["SLA Time Left", closed ? "–" : slaCell(t), true],
+    ["Time Taken", `${t.time_taken ?? 0} h`], ["Closed", fmt(t.date_closed)],
+  ];
+  $("#tvFields").innerHTML = `<h3>Ticket details</h3>` + fields.map(([k, v, html]) =>
+    `<div class="field"><span>${k}</span><div>${html ? v : esc(v || "–")}</div></div>`).join("");
+
+  // Newest first, with the original request as the oldest entry.
+  const newIds = new Set(t.actions.filter((a) => !state.knownActionIds.has(a.id)).map((a) => a.id));
+  const logged = { who: t.user_name, outcome: `Logged via ${t.channel || "Manual"}`, note: t.details || "(no details)",
+                   datetime: t.date_reported, hiddenfromuser: false };
+  $("#thread").innerHTML = [...t.actions].reverse().map((a) => actionHtml(a, fresh && newIds.has(a.id))).join("")
+    + actionHtml(logged, false);
+  state.knownActionIds = new Set(t.actions.map((a) => a.id));
+}
+
+async function loadTicket(id, opts) {
+  const resp = await fetch(`/ui/tickets/${id}`);
+  if (id !== state.ticketId) return;
+  if (!resp.ok) { $("#thread").innerHTML = `<p class="empty">Ticket #${id} not found</p>`; return; }
+  state.ticket = await resp.json();
+  renderTicket(state.ticket, opts);
+}
+
+// Halo Custom Button: URL with $FAULTID replaced by the ticket id, opened outside the ticket.
+// One window per ticket, so clicking again re-focuses it instead of stacking windows.
+function openCustomButton(index) {
+  const button = state.meta.custom_buttons[index];
+  const url = button.url.replaceAll("$FAULTID", state.ticketId);
+  const win = window.open(url, `custom-${index}-${state.ticketId}`, "popup,width=1040,height=900");
+  win?.focus();
+}
+
+function showTicket(id) {
+  const changed = id !== state.ticketId;
+  state.ticketId = id;
+  $("#listView").hidden = true;
+  $("#ticketView").hidden = false;
+  setCrumbs([{ label: "Tickets", href: "#" }, { label: `#${pad(id)}` }]);
+  if (changed) {
+    state.knownActionIds = new Set();
+    $("#composer").innerHTML = "";
+    $("#thread").innerHTML = `<p class="empty">Loading…</p>`;
+    $("#tvHead").innerHTML = ""; $("#tvFields").innerHTML = "";
+    loadTicket(id);
+  }
+}
+
+// --- composer (Add Note / Email User / Close Ticket) ----------------------------------------
+
+const COMPOSER = {
+  note: { title: "Add Note", placeholder: "Internal note…", button: "Save Note" },
+  email: { title: "Email User", placeholder: "Message to the contact…", button: "Send Email" },
+  close: { title: "Close Ticket", placeholder: "What fixed it? (saved as the closing note)", button: "Close Ticket" },
+};
+
+function openComposer(mode) {
+  const c = COMPOSER[mode];
+  $("#composer").innerHTML = `<div class="composer" data-mode="${mode}">
+    <div class="ctitle">${c.title}</div>
+    <textarea id="cText" placeholder="${c.placeholder}"></textarea>
+    <div class="crow">
+      ${mode === "note" ? `<label><input type="checkbox" id="cPrivate" checked> Private (hidden from user)</label>` : ""}
+      <span class="err" id="cErr"></span><span class="spacer"></span>
+      <button class="pill-btn" data-act="cancel">Cancel</button>
+      <button class="pill-btn primary" data-act="submit">${c.button}</button>
+    </div></div>`;
+  $("#cText").focus();
+}
+
+async function submitComposer() {
+  const mode = $(".composer").dataset.mode;
+  const text = $("#cText").value.trim();
+  if (!text) { $("#cErr").textContent = "Enter some text first."; return; }
+  const id = state.ticketId;
+  const who = state.ticket?.agent || "Service Desk";
+  let resp;
+  if (mode === "close") {
+    resp = await fetch(`/ui/tickets/${id}/close`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolution: text }) });
+  } else {
+    const isPrivate = mode === "note" && $("#cPrivate").checked;
+    resp = await fetch(`/ui/tickets/${id}/actions`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: text, who, outcome: mode === "email" ? "Email User" : isPrivate ? "Private Note" : "Note",
+                             hiddenfromuser: isPrivate }) });
+  }
+  if (!resp.ok) { $("#cErr").textContent = (await resp.json()).detail || "Failed"; return; }
+  $("#composer").innerHTML = "";
+  loadTicket(id, { fresh: true });
+}
+
+$("#ticketView").addEventListener("click", (e) => {
+  const custom = e.target.closest("[data-custom]");
+  if (custom) { openCustomButton(Number(custom.dataset.custom)); return; }
+  const act = e.target.closest("[data-act]")?.dataset.act;
+  if (!act) return;
+  if (act === "back") goBack();
+  else if (act in COMPOSER) openComposer(act);
+  else if (act === "cancel") $("#composer").innerHTML = "";
+  else if (act === "submit") submitComposer();
+});
+
+// --- new ticket ----------------------------------------------------------------------------
+
+function fillSelect(el, values, selected) {
+  el.innerHTML = values.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(selected) ? "selected" : ""}>${esc(l)}</option>`).join("");
+}
+function syncSites(selected) { fillSelect($("#site"), state.meta.clients[$("#client").value].map((s) => [s, s]), selected); }
+function syncSubtypes(selected) { fillSelect($("#subtype"), state.meta.types[$("#type").value].map((s) => [s, s]), selected); }
+$("#client").addEventListener("change", () => syncSites());
+$("#type").addEventListener("change", () => syncSubtypes());
+
+$("#preset").addEventListener("change", (e) => {
+  const p = PRESETS[e.target.value];
+  if (!p) return;
+  const f = $("#newForm");
+  f.client_name.value = p.client_name; syncSites(p.site_name);
+  f.type.value = p.type; syncSubtypes(p.subtype);
+  for (const k of ["user_name", "channel", "impact", "urgency", "summary", "details"]) f[k].value = p[k];
+  f.asset_model.value = "";
+});
+
+$("#newBtn").addEventListener("click", () => {
+  $("#newForm").reset(); syncSites(); syncSubtypes(); $("#newDlg").showModal();
+});
+$("#cancelNew").addEventListener("click", () => $("#newDlg").close());
+$("#newForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = Object.fromEntries(new FormData(e.target));
+  body.impact = Number(body.impact); body.urgency = Number(body.urgency);
+  if (!body.asset_model) delete body.asset_model;
+  const resp = await fetch("/ui/tickets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const t = await resp.json();
+  $("#newDlg").close();
+  location.hash = `ticket=${t.id}`;  // watch the private note arrive
+});
+
+// --- routing + polling ---------------------------------------------------------------------
+// #ticket=45306 opens a ticket; anything else is the list.
+//
+// Each history entry is stamped with its depth in this page, so the ← arrow can behave like
+// Back: return to the previous view (another ticket, the list), or to the page that opened
+// this one (e.g. the Similar Tickets window), and only fall back to the list when there's
+// nowhere to go back to.
+let depth = -1;
+
+function goBack() {
+  if (depth > 0 || (document.referrer && history.length > 1)) history.back();
+  else location.hash = "";
+}
+
+function route() {
+  if (history.state?.depth == null) history.replaceState({ depth: depth + 1 }, "");
+  depth = history.state.depth;
+  const id = new URLSearchParams(location.hash.slice(1)).get("ticket");
+  if (/^\d+$/.test(id || "")) {
+    showTicket(Number(id));
+  } else {
+    showList();
+  }
+}
+window.addEventListener("hashchange", route);
+
+let tick = 0;
+setInterval(() => {
+  tick++;
+  if (state.ticketId != null) {
+    // Poll so the middleware's private note shows up without a refresh.
+    loadTicket(state.ticketId, { fresh: true });
+  } else if (tick % 3 === 0) {
+    loadList();
+  }
+}, 2000);
+
+(async function init() {
+  state.meta = await (await fetch("/ui/meta")).json();
+  const m = state.meta;
+  fillSelect($("#client"), Object.keys(m.clients).map((c) => [c, c]));
+  fillSelect($("#type"), Object.keys(m.types).map((t) => [t, t]));
+  fillSelect($("#impact"), Object.entries(m.impacts).map(([v, l]) => [v, `${v} - ${l}`]), 3);
+  fillSelect($("#urgency"), Object.entries(m.urgencies).map(([v, l]) => [v, `${v} - ${l}`]), 2);
+  fillSelect($("#preset"), [["", "(blank)"], ...PRESETS.map((p, i) => [i, p.label])]);
+  route();
+})();
+</script>
+</body>
+</html>

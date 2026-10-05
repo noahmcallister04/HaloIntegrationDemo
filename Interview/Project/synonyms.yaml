@@ -1,0 +1,137 @@
+# Fire/EMS synonym dictionary (editable).
+#
+# Each key is the normalized concept; the list holds the variants people actually
+# type. Matching is case-insensitive and whole-word. Single-word variants are also
+# matched typo-tolerantly (e.g. "toughbok" -> toughbook), see preprocess.fuzzy_threshold.
+# Underscores in a key become spaces in the normalized text.
+
+toughbook:
+  - toughbook
+  - toughbooks
+  - tough book
+  - tuffbook
+  - tuff book
+  - cf-33
+  - cf33
+  - cf-31
+  - cf31
+  - truck laptop
+  - rugged laptop
+  - rig laptop
+  - laptop in the truck
+  - laptop in the rig
+
+mdt:
+  - mdt
+  - mdc
+  - mobile data terminal
+  - mobile data computer
+  - truck computer
+  - rig computer
+
+printer:
+  - printer
+  - printers
+  - priner
+  - printr
+  - copier
+  - copy machine
+  - mfp
+  - ricoh
+  - can't print
+  - unable to print
+  - won't print
+
+account_access:
+  - locked out
+  - lockout
+  - account locked
+  - forgot password
+  - forgot my password
+  - can't log in
+  - can't login
+  - password reset
+  - reset password
+  - password expired
+
+epcr:
+  - epcr
+  - e-pcr
+  - pcr
+  - patient report
+  - patient reports
+  - patient care report
+  - charting software
+  - charting
+
+cad:
+  - cad
+  - mobile cad
+  - cad client
+  - dispatch
+  - dispatches
+  - computer aided dispatch
+
+station_alerting:
+  - station alerting
+  - alerting system
+  - alerting
+  - tones
+  - tone out
+  - g2
+
+vpn:
+  - vpn
+  - mobility vpn
+  - tunnel
+
+cell_modem:
+  - cradlepoint
+  - modem
+  - aircard
+  - hotspot
+  - truck wifi
+  - truck wi-fi
+
+wifi:
+  - wifi
+  - wi-fi
+  - wireless
+  - wlan
+
+email:
+  - email
+  - emails
+  - e-mail
+  - outlook
+  - mailbox
+  - inbox
+
+mfa:
+  - mfa
+  - 2fa
+  - authenticator
+  - two factor
+  - multi-factor
+
+docking_station:
+  - dock
+  - docked
+  - docking station
+  - port replicator
+
+monitor:
+  - monitor
+  - monitors
+  - second screen
+
+phishing:
+  - phishing
+  - phish
+  - suspicious email
+  - scam email
+
+desk_phone:
+  - desk phone
+  - yealink
+  - dial tone

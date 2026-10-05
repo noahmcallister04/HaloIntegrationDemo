@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Similar Tickets</title>
+<script>
+  // ?theme=light|dark lets the host match its own theme; otherwise follow the OS.
+  const t = new URLSearchParams(location.search).get("theme");
+  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f6f8fb; --text: #1d2433; --muted: #6b778a; --border: #e6eaf0;
+    --accent: #0d98d3; --accent-soft: #e6f6fd; --good: #1f7a3f; --good-soft: #ebf8ef;
+    --bad: #b42318; --bad-soft: #fdecea; --chip: #eef1f5; --bar: #e5e8ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1e26; --panel: #20252e; --text: #e6e9ef; --muted: #98a2b3; --border: #2d333d;
+      --accent: #38bdf8; --accent-soft: #0f2a38; --good: #4ade80; --good-soft: #13261a;
+      --bad: #f87171; --bad-soft: #2b1515; --chip: #2a303a; --bar: #2d333d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1e26; --panel: #20252e; --text: #e6e9ef; --muted: #98a2b3; --border: #2d333d;
+    --accent: #38bdf8; --accent-soft: #0f2a38; --good: #4ade80; --good-soft: #13261a;
+    --bad: #f87171; --bad-soft: #2b1515; --chip: #2a303a; --bar: #2d333d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+               font: 14px/1.45 Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { padding: 18px 20px 22px; max-width: 980px; margin: 0 auto; }
+  .ctx { color: var(--muted); font-size: 13px; margin: -2px 0 12px; }
+  .ctx b { color: var(--text); }
+  .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .top h1 { font-size: 15px; margin: 0; flex: 1; }
+  button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--border);
+           background: var(--bg); color: var(--text); padding: 5px 10px; }
+  .understood { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
+  .understood .label { color: var(--muted); }
+  .understood code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; word-break: break-word; }
+  .chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; vertical-align: middle; }
+  .chip { background: var(--chip); border-radius: 999px; padding: 0 8px; font-size: 12px; }
+  .chip.match { background: var(--accent-soft); color: var(--accent); }
+  .banner { border-radius: 6px; padding: 7px 12px; font-size: 13px; margin-bottom: 10px; }
+  .banner.ok { background: var(--good-soft); color: var(--good); }
+  .banner.low { background: var(--bad-soft); color: var(--bad); }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+  .card.dim { opacity: .62; }
+  .head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .id { font-weight: 700; color: var(--accent); text-decoration: underline; }
+  .score { font-weight: 700; color: var(--accent); }
+  .meta { color: var(--muted); font-size: 12.5px; }
+  .bar { height: 3px; background: var(--bar); border-radius: 2px; margin: 6px 0 8px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  .summary { font-style: italic; margin: 0 0 6px; }
+  .fix { background: var(--good-soft); border-radius: 6px; padding: 6px 10px; margin: 0 0 6px; }
+  .fix b { color: var(--good); }
+  .actions { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .actions button { font-size: 13px; padding: 3px 9px; }
+  .actions button.voted-up { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+  .actions button.voted-down { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+  .why { color: var(--muted); font-size: 12px; }
+  .why summary { cursor: pointer; }
+  .why table { border-collapse: collapse; margin-top: 4px; }
+  .why td { padding: 0 12px 0 0; }
+  .tag { font-size: 11px; border-radius: 4px; padding: 0 6px; background: var(--chip); color: var(--muted); }
+  .hint, .empty { color: var(--muted); font-size: 13px; }
+  .error { color: var(--bad); }
+  footer { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 12px; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+  footer b { color: var(--text); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>🔎 Similar resolved tickets</h1>
+  </div>
+  <div class="ctx" id="ctx" hidden></div>
+  <div id="out"><p class="empty">Loading…</p></div>
+  <footer id="stats"></footer>
+</main>
+
+<script>
+// Opened from a Halo ticket Custom Button: <middleware>/similar?ticket_id=$FAULTID
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const BOOST_LABELS = {
+  same_client: "Same client", same_site: "Same site", same_type: "Same type", same_subtype: "Same subtype",
+  same_asset_model: "Same asset model", shared_concepts: "Shared concepts", recency: "Recency",
+  feedback: "Technician feedback", weak_resolution: "Weak resolution notes",
+};
+const params = new URLSearchParams(location.search);
+const ticketId = /^\d+$/.test(params.get("ticket_id") || "") ? Number(params.get("ticket_id")) : null;
+
+const pad = (id) => String(id).padStart(7, "0");
+
+function renderContext(q) {
+  document.title = `Similar Tickets · #${pad(q.ticket_id)}`;
+  const where = [q.client, q.site].filter(Boolean).map(esc).join(" / ");
+  $("#ctx").innerHTML = `For ticket <b>#${pad(q.ticket_id)}</b> · “${esc(q.summary)}”${where ? ` · <span class="meta">${where}</span>` : ""}`;
+  $("#ctx").hidden = false;
+}
+
+async function loadStats() {
+  try {
+    const s = await (await fetch("api/stats")).json();
+    const rate = s.helpful_rate == null ? "–" : Math.round(s.helpful_rate * 100) + "%";
+    $("#stats").innerHTML =
+      `<span><b>${s.indexed_tickets}</b> resolved tickets indexed</span>` +
+      `<span><b>${s.notes_posted}</b> notes posted</span>` +
+      `<span><b>${rate}</b> rated helpful (${s.feedback_votes} votes)</span>`;
+  } catch { /* stats are optional */ }
+}
+
+function fmtDate(iso) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+}
+
+function renderMatch(m) {
+  const pct = Math.round(m.score * 100);
+  const why = [`<tr><td>Semantic similarity</td><td>${m.semantic.toFixed(2)}</td></tr>`]
+    .concat(Object.entries(m.boosts).map(([k, v]) =>
+      `<tr><td>${BOOST_LABELS[k] || k}</td><td>${v >= 0 ? "+" : ""}${v.toFixed(3)}</td></tr>`))
+    .join("");
+  const concepts = m.matched_concepts.map((c) => `<span class="chip match">${esc(c)}</span>`).join("");
+  return `<div class="card ${m.above_threshold ? "" : "dim"}" data-id="${m.ticket_id}">
+    <div class="head">
+      <a class="id" href="${esc(m.url)}" title="Open ticket #${m.ticket_id} (Back returns here)">#${m.ticket_id}</a><span class="score">${pct}%</span>
+      <span class="meta">${[m.client, m.site].filter(Boolean).map(esc).join(" / ")}</span>
+      ${m.above_threshold ? "" : `<span class="tag">below threshold</span>`}
+      ${m.weak_resolution ? `<span class="tag">weak notes</span>` : ""}
+      ${concepts ? `<span class="chips">${concepts}</span>` : ""}
+    </div>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+    <p class="summary">“${esc(m.summary)}”</p>
+    <p class="fix"><b>Fix:</b> ${esc(m.resolution)}</p>
+    <div class="meta">${[[m.type, m.subtype].filter(Boolean).join(" › "), m.asset_model, m.date_closed && "Closed " + fmtDate(m.date_closed)].filter(Boolean).map(esc).join(" · ")}</div>
+    <div class="actions">
+      <button data-helpful="1">👍 Helpful</button>
+      <button data-helpful="0">👎 Not helpful</button>
+      <details class="why"><summary>Why this match?</summary><table>${why}</table></details>
+    </div>
+  </div>`;
+}
+
+function render(data) {
+  const chips = data.concepts.map((c) => `<span class="chip">${esc(c)}</span>`).join("");
+  let html = `<div class="understood">
+    <span class="label">This ticket, understood as:</span>
+    <code>${esc(data.normalized_text) || "(nothing left after cleanup)"}</code>
+    ${chips ? `<span class="chips">${chips}</span>` : ""}
+  </div>`;
+  if (!data.results.length) {
+    html += `<p class="empty">No resolved tickets with fix notes matched.</p>`;
+  } else {
+    html += data.confident
+      ? `<div class="banner ok">Strong match (≥ ${Math.round(data.threshold * 100)}%).</div>`
+      : `<div class="banner low">No match reaches the ${Math.round(data.threshold * 100)}% confidence threshold. Shown for reference.</div>`;
+    html += data.results.map(renderMatch).join("");
+  }
+  if (data.hidden_no_resolution) {
+    html += `<p class="hint">${data.hidden_no_resolution} similar ticket(s) hidden because they were closed without resolution notes.</p>`;
+  }
+  renderContext(data.query);
+  $("#out").innerHTML = html;
+}
+
+async function search() {
+  if (ticketId == null) {
+    $("#out").innerHTML = `<p class="empty">Open this from the Similar Tickets button on a ticket.</p>`;
+    return;
+  }
+  $("#out").innerHTML = `<p class="empty">Searching…</p>`;
+  try {
+    const resp = await fetch("api/similar?" + new URLSearchParams({ ticket_id: ticketId }));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText);
+    render(data);
+  } catch (err) {
+    $("#out").innerHTML = `<p class="error">${esc(err.message)}</p>`;
+  }
+}
+
+$("#out").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-helpful]");
+  if (!btn) return;
+  const card = btn.closest(".card");
+  const helpful = btn.dataset.helpful === "1";
+  await fetch("api/feedback", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ suggested_ticket_id: Number(card.dataset.id), helpful, open_ticket_id: ticketId }),
+  });
+  card.querySelectorAll("button[data-helpful]").forEach((b) => b.classList.remove("voted-up", "voted-down"));
+  btn.classList.add(helpful ? "voted-up" : "voted-down");
+  loadStats();
+});
+
+search();
+loadStats();
+</script>
+</body>
+</html>

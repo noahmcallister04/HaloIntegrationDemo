@@ -1,0 +1,75 @@
+# Similar Resolved Tickets - configuration.
+# Secrets can be overridden with environment variables:
+#   HALO_BASE_URL, HALO_AUTH_URL, HALO_CLIENT_ID, HALO_CLIENT_SECRET, WEBHOOK_SECRET
+
+halo:
+  # Points at the local mock. For a real instance use https://<tenant>.halopsa.com
+  # and https://<tenant>.halopsa.com/auth/token
+  base_url: http://127.0.0.1:8001
+  auth_url: http://127.0.0.1:8001/auth/token
+  client_id: demo-client
+  client_secret: demo-secret
+  scope: all
+  # Link to a ticket in the agent UI ({id} = ticket number), used for the links in the note.
+  # Real Halo is likely https://<tenant>.halopsa.com/ticket?id={id} (verify on the instance).
+  ticket_url: http://127.0.0.1:8001/#ticket={id}
+
+middleware:
+  host: 127.0.0.1
+  port: 8000
+  # Where agents' browsers reach the middleware. The Halo ticket Custom Button URL is
+  # <public_url>/similar?ticket_id=$FAULTID.
+  public_url: http://127.0.0.1:8000
+  # Shared secret Halo sends in the X-Webhook-Secret header.
+  webhook_secret: local-demo-secret
+  db_path: data/index.db
+  note_author: Similar Tickets Bot
+
+mock_halo:
+  host: 127.0.0.1
+  port: 8001
+  db_path: data/halo.db
+  client_id: demo-client
+  client_secret: demo-secret
+  webhooks:
+    ticket_created: http://127.0.0.1:8000/webhooks/ticket-created
+    ticket_closed: http://127.0.0.1:8000/webhooks/ticket-closed
+  # Mirrors Halo's ticket Custom Buttons: a URL where $FAULTID becomes the ticket id,
+  # opened in a new window.
+  custom_buttons:
+    - name: Similar Tickets
+      url: http://127.0.0.1:8000/similar?ticket_id=$FAULTID&theme=light
+
+preprocess:
+  synonyms_path: synonyms.yaml
+  # rapidfuzz ratio (0-100) for typo-tolerant single-word synonym matching.
+  fuzzy_threshold: 90
+
+matching:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  # Only post a note when the best match scores at least this.
+  post_threshold: 0.60
+  # Matches below this are left out of the note even when the top one is strong.
+  min_result_score: 0.45
+  top_k_note: 3
+  top_k_lookup: 5
+  # Semantic top-N that gets re-ranked with the structured boosts.
+  candidate_pool: 50
+  weights:
+    same_client: 0.03
+    same_site: 0.02
+    same_type: 0.02
+    same_subtype: 0.04
+    same_asset_model: 0.04
+    # Scaled by the overlap (Jaccard) of normalized concepts, e.g. {toughbook, cad}.
+    shared_concepts: 0.08
+    # Max recency boost; halves every recency_half_life_days.
+    recency: 0.03
+    recency_half_life_days: 180
+    # Per net helpful vote on a suggested ticket, capped at +/- feedback_cap.
+    feedback_step: 0.03
+    feedback_cap: 0.10
+  resolution:
+    # Resolutions shorter than this (or generic like "fixed") are ranked lower.
+    min_length: 20
+    weak_penalty: 0.15
